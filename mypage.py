@@ -14,10 +14,6 @@ import numpy as np
 
 
 
-df = px.data.iris()
-all_dims = ['sepal_length', 'sepal_width', 
-            'petal_length', 'petal_width']
-
 # record_df = pd.read_csv('data/bibek-records.csv')
 
 # record_df = record_df.loc[(record_df['Year'] != 0)]
@@ -27,6 +23,7 @@ all_dims = ['sepal_length', 'sepal_width',
 # record_df=record_df.rename({'Course Title':'Number of Courses Taken'}, axis='columns')
 # record_df['count'] = 1
 # year_options = record_df['Year'].unique()
+df = px.data.tips()
 
 features = ['Accelerometer', 'BatteryEntity', 'Calories', 'HeartRate', 'SkinTemperature']
 avg_accs = []
@@ -148,9 +145,26 @@ app.layout = html.Div(className = 'big-container',children=[
                             for x in feature_options],
                     value= 'Accelerometer',
                 ),
-                dcc.Graph(
-                    id='funnel-graph',
+            #     html.P("x-axis:"),
+            # dcc.Checklist(
+            #     id='x-axis', 
+            #     options=[{'value': x, 'label': x} 
+            #             for x in ['smoker', 'day', 'time', 'sex']],
+            #     value=['time'], 
+            #     labelStyle={'display': 'inline-block'}
+            # ),
+            # html.P("y-axis:"),
+            # dcc.RadioItems(
+            #     id='y-axis', 
+            #     options=[{'value': x, 'label': x} 
+            #             for x in ['total_bill', 'tip', 'size']],
+            #     value='total_bill', 
+            #     labelStyle={'display': 'inline-block'}
+            # ),
+            dcc.Graph(
+                figure = px.box(df, x='time', y='size')
                 )],
+                    #   style={'width': '90vh', 'height': '90vh'}),],
                 style={
                     'display': 'inline-block',
                     'width': 650,
@@ -285,8 +299,6 @@ def update_line_plot(feature):
                     margin={'t': 30}, autosize=False, width=500, height=200)
 
     return fig
-
-
 
 
 
