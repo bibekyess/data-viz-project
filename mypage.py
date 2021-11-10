@@ -10,6 +10,9 @@ from pandas.io.pytables import Term
 import plotly.graph_objs as go
 import dash_bootstrap_components as dbc
 import plotly.express as px
+import numpy as np
+
+
 
 df = px.data.iris()
 all_dims = ['sepal_length', 'sepal_width', 
@@ -25,8 +28,91 @@ all_dims = ['sepal_length', 'sepal_width',
 # record_df['count'] = 1
 # year_options = record_df['Year'].unique()
 
+features = ['Accelerometer', 'BatteryEntity', 'Calories', 'HeartRate', 'SkinTemperature']
+avg_accs = []
+users = []
+line_dataset = []
+def get_day_data():
+    for i in range(1, 11):
+        user = 'P070' + str(i)
+        if i > 9:
+            user = 'P07' + str(i)
+        user_features = []
+        test_user = []
+        for feature in features:
+            df = pd.read_csv('data/'+ user +'/'+ feature +'-5572736000.csv')
+            df['datetime'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df1 = df.loc[(df['datetime']>'2019-05-08 00:00:00.000') & (df['datetime']<'2019-05-08 03:00:00.000')]
+            df2 = df.loc[(df['datetime']>'2019-05-08 03:00:00.000') & (df['datetime']<'2019-05-08 06:00:00.000')]
+            df3 = df.loc[(df['datetime']>'2019-05-08 06:00:00.000') & (df['datetime']<'2019-05-08 09:00:00.000')]
+            df4 = df.loc[(df['datetime']>'2019-05-08 09:00:00.000') & (df['datetime']<'2019-05-08 12:00:00.000')]
+            df5 = df.loc[(df['datetime']>'2019-05-08 12:00:00.000') & (df['datetime']<'2019-05-08 15:00:00.000')]
+            df6 = df.loc[(df['datetime']>'2019-05-08 15:00:00.000') & (df['datetime']<'2019-05-08 18:00:00.000')]
+            df7 = df.loc[(df['datetime']>'2019-05-08 08:00:00.000') & (df['datetime']<'2019-05-08 21:00:00.000')]
+            df8 = df.loc[(df['datetime']>'2019-05-08 21:00:00.000') & (df['datetime']<'2019-05-09 00:00:00.000')]
+            df = pd.concat([df1, df2, df3, df4, df5, df6, df7, df8])
+            user_features.append(df)
+            test_user.append(df1)
+            test_user.append(df2)
+            test_user.append(df3)
+            test_user.append(df4)
+            test_user.append(df5)
+            test_user.append(df6)
+            test_user.append(df7)
+            test_user.append(df8)
+        line_dataset.append(test_user)
+        users.append(user_features)
+        
+def get_avg_accs():
+    for i in range(10):
+        user_acc_df = users[i][0]
+        user_acc_df['combined_acc'] = np.sqrt(np.square(user_acc_df.Y) + 
+                                              np.square(user_acc_df.X) + 
+                                              np.square(user_acc_df.Z))
+        for j in range(8):
+          indiv_user_acc_df = line_dataset[i][j]
+          indiv_user_acc_df['combined_acc'] = np.sqrt(np.square(indiv_user_acc_df.X) + np.square(indiv_user_acc_df.Y) + np.square(indiv_user_acc_df.Z))
+        avg_accs.append(user_acc_df['combined_acc'].mean())
+        
+get_day_data()
+get_avg_accs()
+# user-1
+def get_user_dataframe(num): 
+    tt = pd.DataFrame(columns=['x','Accelerometer', 'BatteryEntity', 'Calories', 'HeartRate', 'SkinTemperature'], index=range(9))
+    user1 = []
+    tt['x'] = ['0', '3', '6', '9', '12', '15', '18', '21', '24']
+    temp = []
+    temp.append(line_dataset[num][0].iloc[0]['combined_acc'])
+    for i in range(0,8):
+    # tt['y'] = [line_dataset[0][0]['Z'].mean(),2,3,4,5,6,7,8,9]
+        temp.append(line_dataset[num][i]['combined_acc'].mean())
+    tt['Accelerometer'] = temp
+    temp = []
+    temp.append(line_dataset[num][8].iloc[0]['level'])
+    for i in range(8,16):
+        temp.append(line_dataset[num][i]['level'].mean())
+    tt['BatteryEntity'] = temp 
+    temp = []
+    temp.append(line_dataset[num][16].iloc[0]['CaloriesToday'])
+    for i in range(16,24):
+        temp.append(line_dataset[num][i]['CaloriesToday'].mean())
+    tt['Calories'] = temp 
+    temp = []
+    temp.append(line_dataset[num][24].iloc[0]['BPM'])
+    for i in range(24,32):
+        temp.append(line_dataset[num][i]['BPM'].mean())
+    tt['HeartRate'] = temp
+    temp = []
+    temp.append(line_dataset[num][32].iloc[0]['Temperature'])
+    for i in range(32,40):
+        temp.append(line_dataset[num][i]['Temperature'].mean())
+    tt['SkinTemperature'] = temp
 
+    user1.append(tt)
+    return user1
 
+selectedUser_df = get_user_dataframe(1)
+# print(selectedUser_df)
 feature_options = ['Accelerometer', 'BatteryEntity', 'Calories', 'HeartRate', 'SkinTemperature']
 
 
@@ -74,10 +160,24 @@ app.layout = html.Div(className = 'big-container',children=[
                 ),
                 html.Div(
                     dcc.Graph(
-                        id='funnel-graph-02',
+                        figure = go.Figure(data=[
+                        go.Scatter(x = selectedUser_df[0].x, y = selectedUser_df[0].SkinTemperature,
+                                 mode='lines+markers',
+                                 name='United Kingdom'),
+                      ], layout = go.Layout( margin={'t': 0}, autosize=False, width=500, height=200))
                     ),
+                    # style = {'width': 500, 'height': 500, 'display': 'inline-block'}
+                ),  
+                html.Div(
                     
-                ),            
+                    dcc.Graph(
+                        figure = go.Figure(data=[
+                        go.Scatter(x = selectedUser_df[0].x, y = selectedUser_df[0].SkinTemperature,
+                                 mode='lines+markers',
+                                 name='United Kingdom'),
+                      ], layout = go.Layout( margin={'t': 0}, autosize=False, width=500, height=200))
+                    ),
+                ),               
             ],  
             style={
                 'marginLeft': 30,
@@ -164,15 +264,19 @@ def update_bar_chart(dims):
         df, dimensions=dims, color="species")
     return fig
 
-colors1 = {
-    'background': '#FDF5DC',
-    'text': '#323232'
-}
 
-colors2 = {
-    'background': '#D2FFD2',
-    'text': '#3c3c3c'
-}
+def update_line_plot():
+    fig = go.Figure(data=[
+                      go.Scatter(x = selectedUser_df[0].x, y = selectedUser_df[0].SkinTemperature,
+                                 mode='lines+markers',
+                                 name='United Kingdom'),
+                      ])
+    #Update the title of the plot and the titles of x and y axis
+    fig.update_layout(title='Skin Temperature Change over a Day',
+                    xaxis_title='Time',
+                    yaxis_title='Skin Temperature')
+
+    fig.show()
 
 
 
