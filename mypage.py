@@ -137,20 +137,26 @@ app.layout = html.Div(className = 'big-container',children=[
     ]),
 
     html.Div(className = 'inner-container', children = [
-        html.H1('Team Kingsmen'),
-  
+        html.H5('Average Data Type Trend Over a Day', style={'color': 'blue', 'fontSize': 30,'text-align': 'right' , }),
+        html.P('Choose the dataType', style={'color': 'green', 'text-align': 'right', 'fontSize': '20', 'position': 'absolute',  'top': '220px', 'right': '300px', "font-weight": "bold"}),
+
         html.Div(children=[
-            html.Div(
+            html.Div([
+                dcc.Dropdown(
+                    id="first-feature-dropdown",
+                    options=[{"label": x, "value": x} 
+                            for x in feature_options],
+                    value= 'Accelerometer',
+                ),
                 dcc.Graph(
                     id='funnel-graph',
-                ),
+                )],
                 style={
                     'display': 'inline-block',
                     'width': 650,
                     'border': '2px black solid'
                 }
             ),
-            
             html.Div([
                 dcc.Dropdown(
                     id="feature-dropdown",
@@ -158,13 +164,10 @@ app.layout = html.Div(className = 'big-container',children=[
                             for x in feature_options],
                     value= 'Accelerometer',
                 ),
+
                 html.Div(
                     dcc.Graph(
-                        figure = go.Figure(data=[
-                        go.Scatter(x = selectedUser_df[0].x, y = selectedUser_df[0].SkinTemperature,
-                                 mode='lines+markers',
-                                 name='United Kingdom'),
-                      ], layout = go.Layout( margin={'t': 0}, autosize=False, width=500, height=200))
+                        id = "fig-rt-top"
                     ),
                     # style = {'width': 500, 'height': 500, 'display': 'inline-block'}
                 ),  
@@ -181,28 +184,17 @@ app.layout = html.Div(className = 'big-container',children=[
                 ),               
             ],  
             style={
-                'marginLeft': 30,
-                'width': 500,
+                'marginLeft': 20,
+                'width': 520,
                 'display': 'inline-block',
                 'border': '2px black solid'
             }),
         ]),
 
         html.Div(className = 'bg-light p-1', children = [
-            html.H2(html.Span('Course Records', className = 'fw-light'), className = 'm-3 text-center')
+            html.H2(html.Span('Time Series Visualization with Range Slider', className = 'fw-light'), className = 'm-3 text-center')
         ]),
-        
-        # html.Div(
-        #     [
-        #        dcc.Dropdown(
-        #            id = "Year", options = [{
-        #                'label': i, 'value': i
-        #            } for i in year_options],
-        #            value = 'All Years'
-        #        )
-        #     ],
-        #     style = {'width': '25%', 'display': 'inline-block'}),
-        # dcc.Graph(id = 'funnel-graph-11',),
+
         
     ]),
     
@@ -226,18 +218,24 @@ app.layout = html.Div(className = 'big-container',children=[
 
 @app.callback(
     dash.dependencies.Output('time-series', 'figure'),
-    [dash.dependencies.Input('feature-dropdown', 'value')]
+    [dash.dependencies.Input('first-feature-dropdown', 'value')]
 )
 def update_timePlot(feature):
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=users[1][4]['datetime'], y= users[1][4]['Temperature'],
+    c = features.index(feature)
+    if c == 0: feature = "combined_acc"
+    elif c == 1: feature = "level"
+    elif c == 2: feature = "CaloriesToday"
+    elif c == 3: feature = "BPM"
+    elif c == 4: feature = "Temperature"
+    fig.add_trace(go.Scatter(x=users[1][c]['datetime'], y= users[1][c][feature],
                         mode='lines',
                         name='mag'))
 
     fig.update_layout(
-        title='Time Series with Range Slider',
         xaxis_title='Time',
-        yaxis_title='Magnitude',
+        yaxis_title= feature,
+        margin={'t': 0},
         xaxis=
             dict(
             rangeslider=
@@ -268,6 +266,25 @@ def update_line_plot(feature):
 
     return fig
 
+
+@app.callback(
+    dash.dependencies.Output('fig-rt-top', 'figure'),
+    [dash.dependencies.Input('first-feature-dropdown', 'value')]
+)
+
+def update_line_plot(feature):
+    fig = go.Figure(data=[
+                      go.Scatter(x = selectedUser_df[0].x, y = selectedUser_df[0][feature],
+                                 mode='lines+markers',
+                                 ),
+                      ])
+    #Update the title of the plot and the titles of x and y axis
+    fig.update_layout(
+                    xaxis_title='Time',
+                    yaxis_title= feature,
+                    margin={'t': 30}, autosize=False, width=500, height=200)
+
+    return fig
 
 
 
