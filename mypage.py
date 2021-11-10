@@ -48,7 +48,7 @@ def get_day_data():
             df4 = df.loc[(df['datetime']>'2019-05-08 09:00:00.000') & (df['datetime']<'2019-05-08 12:00:00.000')]
             df5 = df.loc[(df['datetime']>'2019-05-08 12:00:00.000') & (df['datetime']<'2019-05-08 15:00:00.000')]
             df6 = df.loc[(df['datetime']>'2019-05-08 15:00:00.000') & (df['datetime']<'2019-05-08 18:00:00.000')]
-            df7 = df.loc[(df['datetime']>'2019-05-08 08:00:00.000') & (df['datetime']<'2019-05-08 21:00:00.000')]
+            df7 = df.loc[(df['datetime']>'2019-05-08 18:00:00.000') & (df['datetime']<'2019-05-08 21:00:00.000')]
             df8 = df.loc[(df['datetime']>'2019-05-08 21:00:00.000') & (df['datetime']<'2019-05-09 00:00:00.000')]
             df = pd.concat([df1, df2, df3, df4, df5, df6, df7, df8])
             user_features.append(df)
@@ -171,11 +171,12 @@ app.layout = html.Div(className = 'big-container',children=[
                 html.Div(
                     
                     dcc.Graph(
-                        figure = go.Figure(data=[
-                        go.Scatter(x = selectedUser_df[0].x, y = selectedUser_df[0].SkinTemperature,
-                                 mode='lines+markers',
-                                 name='United Kingdom'),
-                      ], layout = go.Layout( margin={'t': 0}, autosize=False, width=500, height=200))
+                        id = "fig-rt-down"
+                    #     figure = go.Figure(data=[
+                    #     go.Scatter(x = selectedUser_df[0].x, y = selectedUser_df[0].SkinTemperature,
+                    #              mode='lines+markers',
+                    #              name='United Kingdom'),
+                    #   ], layout = go.Layout( margin={'t': 0}, autosize=False, width=500, height=200))
                     ),
                 ),               
             ],  
@@ -206,14 +207,7 @@ app.layout = html.Div(className = 'big-container',children=[
     ]),
     
     html.Div([
-    dcc.Dropdown(
-        id="dropdown",
-        options=[{"label": x, "value": x} 
-                for x in all_dims],
-        value=all_dims[:2],
-        multi=True
-    ),
-    dcc.Graph(id="splom"),
+        dcc.Graph(id="time-series"),
     ]),
     
     html.Div(className = 'footer', children = [
@@ -229,54 +223,50 @@ app.layout = html.Div(className = 'big-container',children=[
 # )
 
     
-# def update_graph(Year):
-#     if Year == 'All Years':
-#         records_df = record_df.copy()
-#     else:
-#         records_df = record_df.loc[record_df['Year'] == Year]
-
-#         # record_df_plot = record_df[record_df['Year'] == Year]
-    
-    
-#     Term = ['Fall', 'Spring']
-#     trace1 = go.Bar(x= Term, y= records_df[records_df['Department'] == 'Biological Sciences']['Number of Courses Taken'], name='Biological Sciences')
-#     trace2 = go.Bar(x=Term, y = records_df[records_df['Department'] == 'Chemistry']['Number of Courses Taken'], name='Chemistry')
-#     trace3 = go.Bar(x=Term, y=records_df[records_df['Department'] == 'College of Engineering']['Number of Courses Taken'], name='College of Engineering')
-#     trace4 = go.Bar(x=Term, y=records_df[records_df['Department'] == 'Department of Mathematical Sciences']['Number of Courses Taken'], name='Department of Mathematical Sciences')
-#     trace5 = go.Bar(x=Term, y=records_df[records_df['Department'] == 'Physics']['Number of Courses Taken'], name='Physics')
-#     trace6 = go.Bar(x=Term, y=records_df[records_df['Department'] == 'School of Humanities & Social Sciences']['Number of Courses Taken'], name='School of Humanities & Social Sciences')
-#     trace7 = go.Bar(x=Term, y=records_df[records_df['Department'] == 'Minor Program in Science and Technology Policy']['Number of Courses Taken'], name='Minor Program in Science and Technology Policy')
-#     trace8 = go.Bar(x=Term, y=records_df[records_df['Department'] == 'School of Computing']['Number of Courses Taken'], name='School of Computing')
-#     trace9 = go.Bar(x=Term, y=records_df[records_df['Department'] == 'School of Electrical Engineering']['Number of Courses Taken'], name='School of Electrical Engineering')
-
-#     return{
-#         'data': [trace1, trace2, trace3, trace4, trace5, trace6, trace7, trace8, trace9],
-#         'layout': go.Layout(title = 'Number of Courses taken in {}'.format(Year), barmode = "stack")
-#     }
 
 @app.callback(
-    dash.dependencies.Output('splom', 'figure'),
-    [dash.dependencies.Input('dropdown', 'value')]
+    dash.dependencies.Output('time-series', 'figure'),
+    [dash.dependencies.Input('feature-dropdown', 'value')]
 )
+def update_timePlot(feature):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=users[1][4]['datetime'], y= users[1][4]['Temperature'],
+                        mode='lines',
+                        name='mag'))
 
-def update_bar_chart(dims):
-    fig = px.scatter_matrix(
-        df, dimensions=dims, color="species")
+    fig.update_layout(
+        title='Time Series with Range Slider',
+        xaxis_title='Time',
+        yaxis_title='Magnitude',
+        xaxis=
+            dict(
+            rangeslider=
+            dict(
+            visible=True
+            ),
+            type="date"
+            )
+    )
     return fig
 
+@app.callback(
+    dash.dependencies.Output('fig-rt-down', 'figure'),
+    [dash.dependencies.Input('feature-dropdown', 'value')]
+)
 
-def update_line_plot():
+def update_line_plot(feature):
     fig = go.Figure(data=[
-                      go.Scatter(x = selectedUser_df[0].x, y = selectedUser_df[0].SkinTemperature,
+                      go.Scatter(x = selectedUser_df[0].x, y = selectedUser_df[0][feature],
                                  mode='lines+markers',
-                                 name='United Kingdom'),
+                                 ),
                       ])
     #Update the title of the plot and the titles of x and y axis
-    fig.update_layout(title='Skin Temperature Change over a Day',
+    fig.update_layout(
                     xaxis_title='Time',
-                    yaxis_title='Skin Temperature')
+                    yaxis_title= feature,
+                    margin={'t': 0}, autosize=False, width=500, height=200)
 
-    fig.show()
+    return fig
 
 
 
