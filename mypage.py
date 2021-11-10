@@ -127,6 +127,8 @@ colors2 = {
     'text': '#3c3c3c'
 }
 
+df = px.data.tips()
+
 server = Flask(__name__)
 app = dash.Dash(__name__, server = server, external_stylesheets=[dbc.themes.BOOTSTRAP]
 )
@@ -140,16 +142,24 @@ app.layout = html.Div(className = 'big-container',children=[
         html.H1('Team Kingsmen'),
   
         html.Div(children=[
-            html.Div(
-                dcc.Graph(
-                    id='funnel-graph',
-                ),
-                style={
-                    'display': 'inline-block',
-                    'width': 650,
-                    'border': '2px black solid'
-                }
+            html.P("x-axis:"),
+            dcc.Checklist(
+                id='x-axis', 
+                options=[{'value': x, 'label': x} 
+                        for x in ['smoker', 'day', 'time', 'sex']],
+                value=['time'], 
+                labelStyle={'display': 'inline-block'}
             ),
+            html.P("y-axis:"),
+            dcc.RadioItems(
+                id='y-axis', 
+                options=[{'value': x, 'label': x} 
+                        for x in ['total_bill', 'tip', 'size']],
+                value='total_bill', 
+                labelStyle={'display': 'inline-block'}
+            ),
+            dcc.Graph(id="box-plot",
+                      style={'width': '90vh', 'height': '90vh'}),
             
             html.Div([
                 dcc.Dropdown(
@@ -221,6 +231,14 @@ app.layout = html.Div(className = 'big-container',children=[
 #     dash.dependencies.Output('funnel-graph', 'figure'),
 #     [dash.dependencies.Input('Year', 'value')]
 # )
+
+@app.callback(
+    dash.dependencies.Output("box-plot", "figure"), 
+    [dash.dependencies.Input("x-axis", "value"), 
+     dash.dependencies.Input("y-axis", "value")])
+def generate_chart(x, y):
+    fig = px.box(df, x=x, y=y)
+    return fig
 
     
 
