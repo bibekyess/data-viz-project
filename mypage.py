@@ -78,6 +78,40 @@ selected_dates = ['2019-05-08',
                   '2019-05-10']
 
 
+def get_box_plts_data(f):
+    days_f_avgs = []
+    
+    for d in range(3):
+        users_f_avgs = []
+        
+        for u in range(10):
+            df = users_data[u][f][d]
+            
+            if f == 0:
+                df['combined_acc'] = np.sqrt(np.square(df.Y) + 
+                                             np.square(df.X) + 
+                                             np.square(df.Z))
+                
+                avg_acc = df['combined_acc'].mean()
+                if np.isnan(avg_acc):
+                    avg_acc = 0.96 # nan values not shown as outliers
+                
+                users_f_avgs.append(avg_acc)
+            elif f == 1:
+                users_f_avgs.append(df['level'].mean())
+            elif f == 2:
+                users_f_avgs.append(df['CaloriesToday'].mean()) # nan values not shown as outliers
+            elif f == 3:
+                users_f_avgs.append(df['BPM'].mean()) # nan values not shown as outliers
+            elif f == 4:
+                users_f_avgs.append(df['Temperature'].mean()) # nan values not shown as outliers
+        
+        days_f_avgs.append(users_f_avgs)
+
+    return days_f_avgs
+print(users_data[0][0][0])
+get_box_plts_data(0)
+print(users_data[0][0][0])
 
 
 
@@ -93,6 +127,8 @@ def get_user_dataframe(num):
     elif i == 2: ff = "CaloriesToday"
     elif i == 3: ff = "BPM"
     elif i == 4: ff = "Temperature"
+    df = users_data[num][i][0]
+    print(df)
     temp.append(users_data[num][i][0].iloc[0][ff])
     # temp = np.concatenate([temp,(np.array(users_data[0][2][0].set_index('datetime').resample('3H').mean()['CaloriesToday']))])
     rough = np.array(users_data[num][i][0].set_index('datetime').resample('3H').mean()[ff])
@@ -119,6 +155,23 @@ colors2 = {
     'text': '#3c3c3c'
 }
 
+def create_box_plts(feature):
+    f = features.index(feature)
+    box_plts_data = get_box_plts_data(f)
+
+    fig = go.Figure()
+    
+    for d in range(len(box_plts_data)):
+        fig.add_trace(go.Box(y=box_plts_data[d],
+                             name = selected_dates[d],
+                             boxpoints='all',
+                             jitter=0.3,
+                             pointpos=0))
+    
+    fig.update_layout(title_text='Avg. '+ features[f] +' Values')
+    return fig
+
+
 server = Flask(__name__)
 app = dash.Dash(__name__, server = server, external_stylesheets=[dbc.themes.BOOTSTRAP]
 )
@@ -142,7 +195,8 @@ app.layout = html.Div(className = 'big-container',children=[
                 ),
 
             dcc.Graph(
-                figure = px.box(df, x='time', y='size')
+                id='box-plot',
+                # style={'width': '90vh', 'height': '90vh'}
                 )],
                     #   style={'width': '90vh', 'height': '90vh'}),],
                 style={
@@ -281,6 +335,12 @@ def update_line_plot(feature):
 
     return fig
 
+@app.callback(
+    dash.dependencies.Output('box-plot', 'figure'), 
+    dash.dependencies.Input('first-feature-dropdown', 'value'))
+def update_boxplot(feature):
+    fig = create_box_plts(feature)
+    return fig
 
 
 if __name__ == '__main__':
