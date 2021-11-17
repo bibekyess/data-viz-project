@@ -13,105 +13,100 @@ import plotly.express as px
 import numpy as np
 
 
+# Can use this way for quick access to users
+# labelMap = {
+#   1: 'Working at Computer',
+#   2: 'Standing Up, Walking and Going up\down stairs',
+#   3: 'Standing',
+#   4: 'Walking',
+#   5: 'Going Up\Down Stairs',
+#   6: 'Walking and Talking with Someone',
+#   7: 'Talking while Standing',
+# }
 
-# record_df = pd.read_csv('data/bibek-records.csv')
 
-# record_df = record_df.loc[(record_df['Year'] != 0)]
-# record_df = record_df.groupby(['Year','Term','Department']).count()
-# record_df = record_df.reset_index()
-# record_df = record_df[['Year', 'Term', 'Department', 'Course Title']]
-# record_df=record_df.rename({'Course Title':'Number of Courses Taken'}, axis='columns')
-# record_df['count'] = 1
-# year_options = record_df['Year'].unique()
 df = px.data.tips()
 
 features = ['Accelerometer', 'BatteryEntity', 'Calories', 'HeartRate', 'SkinTemperature']
-avg_accs = []
-users = []
-line_dataset = []
-def get_day_data():
-    for i in range(1, 11):
-        user = 'P070' + str(i)
-        if i > 9:
-            user = 'P07' + str(i)
-        user_features = []
-        test_user = []
-        for feature in features:
-            df = pd.read_csv('data/'+ user +'/'+ feature +'-5572736000.csv')
-            df['datetime'] = pd.to_datetime(df['timestamp'], unit='ms')
-            df1 = df.loc[(df['datetime']>'2019-05-08 00:00:00.000') & (df['datetime']<'2019-05-08 03:00:00.000')]
-            df2 = df.loc[(df['datetime']>'2019-05-08 03:00:00.000') & (df['datetime']<'2019-05-08 06:00:00.000')]
-            df3 = df.loc[(df['datetime']>'2019-05-08 06:00:00.000') & (df['datetime']<'2019-05-08 09:00:00.000')]
-            df4 = df.loc[(df['datetime']>'2019-05-08 09:00:00.000') & (df['datetime']<'2019-05-08 12:00:00.000')]
-            df5 = df.loc[(df['datetime']>'2019-05-08 12:00:00.000') & (df['datetime']<'2019-05-08 15:00:00.000')]
-            df6 = df.loc[(df['datetime']>'2019-05-08 15:00:00.000') & (df['datetime']<'2019-05-08 18:00:00.000')]
-            df7 = df.loc[(df['datetime']>'2019-05-08 18:00:00.000') & (df['datetime']<'2019-05-08 21:00:00.000')]
-            df8 = df.loc[(df['datetime']>'2019-05-08 21:00:00.000') & (df['datetime']<'2019-05-09 00:00:00.000')]
-            df = pd.concat([df1, df2, df3, df4, df5, df6, df7, df8])
-            user_features.append(df)
-            test_user.append(df1)
-            test_user.append(df2)
-            test_user.append(df3)
-            test_user.append(df4)
-            test_user.append(df5)
-            test_user.append(df6)
-            test_user.append(df7)
-            test_user.append(df8)
-        line_dataset.append(test_user)
-        users.append(user_features)
-        
-def get_avg_accs():
-    for i in range(10):
-        user_acc_df = users[i][0]
-        user_acc_df['combined_acc'] = np.sqrt(np.square(user_acc_df.Y) + 
-                                              np.square(user_acc_df.X) + 
-                                              np.square(user_acc_df.Z))
-        for j in range(8):
-          indiv_user_acc_df = line_dataset[i][j]
-          indiv_user_acc_df['combined_acc'] = np.sqrt(np.square(indiv_user_acc_df.X) + np.square(indiv_user_acc_df.Y) + np.square(indiv_user_acc_df.Z))
-        avg_accs.append(user_acc_df['combined_acc'].mean())
-        
-get_day_data()
-get_avg_accs()
-# user-1
-def get_user_dataframe(num): 
-    tt = pd.DataFrame(columns=['x','Accelerometer', 'BatteryEntity', 'Calories', 'HeartRate', 'SkinTemperature'], index=range(9))
-    user1 = []
-    tt['x'] = ['0', '3', '6', '9', '12', '15', '18', '21', '24']
-    temp = []
-    temp.append(line_dataset[num][0].iloc[0]['combined_acc'])
-    for i in range(0,8):
-    # tt['y'] = [line_dataset[0][0]['Z'].mean(),2,3,4,5,6,7,8,9]
-        temp.append(line_dataset[num][i]['combined_acc'].mean())
-    tt['Accelerometer'] = temp
-    temp = []
-    temp.append(line_dataset[num][8].iloc[0]['level'])
-    for i in range(8,16):
-        temp.append(line_dataset[num][i]['level'].mean())
-    tt['BatteryEntity'] = temp 
-    temp = []
-    temp.append(line_dataset[num][16].iloc[0]['CaloriesToday'])
-    for i in range(16,24):
-        temp.append(line_dataset[num][i]['CaloriesToday'].mean())
-    tt['Calories'] = temp 
-    temp = []
-    temp.append(line_dataset[num][24].iloc[0]['BPM'])
-    for i in range(24,32):
-        temp.append(line_dataset[num][i]['BPM'].mean())
-    tt['HeartRate'] = temp
-    temp = []
-    temp.append(line_dataset[num][32].iloc[0]['Temperature'])
-    for i in range(32,40):
-        temp.append(line_dataset[num][i]['Temperature'].mean())
-    tt['SkinTemperature'] = temp
+file_nos = ['5572736000', '5573600000', '5574464000', '5575328000', '5576192000', '5577056000', '5577920000']
+metric = ['combined_acc', 'level', 'CaloriesToday', 'BPM', 'Temperature']
 
-    user1.append(tt)
-    return user1
+users_data = []
+
+def create_users_data():
+    for u in range(1, 11):
+        user = 'P070' + str(u)
+        if u > 9:
+            user = 'P07' + str(u)
+        
+        user_features = []
+        
+        for f in features:
+            dfs = []
+            for no in file_nos:
+                df = pd.read_csv('data/'+ user +'/'+ f +'-'+ no +'.csv')
+                df['datetime'] = pd.to_datetime(df['timestamp'], unit='ms')
+                dfs.append(df)
+            user_features.append(pd.concat(dfs, ignore_index=True))
+        
+        users_data.append(user_features)
+
+create_users_data()
+
+def divide_features_data():
+    for u in range(10):
+        for f in range(len(features)):
+            divided_df = []
+            
+            df = users_data[u][f]
+            
+            df1 = df.loc[(df['datetime']>='2019-05-08 00:00:00.000') & 
+                         (df['datetime']<'2019-05-09 00:00:00.000')]
+            df2 = df.loc[(df['datetime']>='2019-05-09 00:00:00.000') & 
+                         (df['datetime']<'2019-05-10 00:00:00.000')]
+            df3 = df.loc[(df['datetime']>='2019-05-10 00:00:00.000') & 
+                         (df['datetime']<'2019-05-11 00:00:00.000')]
+            
+            divided_df.extend([df1, df2, df3])
+            
+            users_data[u][f] = divided_df
+
+divide_features_data()
+
+selected_dates = ['2019-05-08',
+                  '2019-05-09',
+                  '2019-05-10']
+
+
+
+
+
+def get_user_dataframe(num):
+  metric = ['combined_acc', 'level', 'CaloriesToday', 'BPM', 'Temperature']   
+  tt = pd.DataFrame(columns=['x','Accelerometer', 'BatteryEntity', 'Calories', 'HeartRate', 'SkinTemperature'], index=range(9))
+  tt['x'] = ['0', '3', '6', '9', '12', '15', '18', '21', '24']
+
+  for i in range(len(features)):
+    temp = []
+    if i == 0: ff = "combined_acc"
+    elif i == 1: ff = "level"
+    elif i == 2: ff = "CaloriesToday"
+    elif i == 3: ff = "BPM"
+    elif i == 4: ff = "Temperature"
+    temp.append(users_data[num][i][0].iloc[0][ff])
+    # temp = np.concatenate([temp,(np.array(users_data[0][2][0].set_index('datetime').resample('3H').mean()['CaloriesToday']))])
+    rough = np.array(users_data[num][i][0].set_index('datetime').resample('3H').mean()[ff])
+    # accelerometer.set_index('timestamp', drop=True, inplace=True) 
+    t = len(rough)
+    for j in range(8):
+      # print(i)
+      if (j < t): temp.append(rough[j])
+      else: temp.append(0)
+    tt[features[i]] = temp
+  return tt
 
 selectedUser_df = get_user_dataframe(1)
 # print(selectedUser_df)
-feature_options = ['Accelerometer', 'BatteryEntity', 'Calories', 'HeartRate', 'SkinTemperature']
-
 
 
 colors1 = {
@@ -142,25 +137,10 @@ app.layout = html.Div(className = 'big-container',children=[
                 dcc.Dropdown(
                     id="first-feature-dropdown",
                     options=[{"label": x, "value": x} 
-                            for x in feature_options],
+                            for x in features],
                     value= 'Accelerometer',
                 ),
-            #     html.P("x-axis:"),
-            # dcc.Checklist(
-            #     id='x-axis', 
-            #     options=[{'value': x, 'label': x} 
-            #             for x in ['smoker', 'day', 'time', 'sex']],
-            #     value=['time'], 
-            #     labelStyle={'display': 'inline-block'}
-            # ),
-            # html.P("y-axis:"),
-            # dcc.RadioItems(
-            #     id='y-axis', 
-            #     options=[{'value': x, 'label': x} 
-            #             for x in ['total_bill', 'tip', 'size']],
-            #     value='total_bill', 
-            #     labelStyle={'display': 'inline-block'}
-            # ),
+
             dcc.Graph(
                 figure = px.box(df, x='time', y='size')
                 )],
@@ -175,7 +155,7 @@ app.layout = html.Div(className = 'big-container',children=[
                 dcc.Dropdown(
                     id="feature-dropdown",
                     options=[{"label": x, "value": x} 
-                            for x in feature_options],
+                            for x in features],
                     value= 'Accelerometer',
                 ),
 
@@ -242,9 +222,10 @@ def update_timePlot(feature):
     elif c == 2: feature = "CaloriesToday"
     elif c == 3: feature = "BPM"
     elif c == 4: feature = "Temperature"
-    fig.add_trace(go.Scatter(x=users[1][c]['datetime'], y= users[1][c][feature],
+    fig.add_trace(go.Scatter(x=users_data[1][c][0]['datetime'], y= users_data[1][c][0][feature],
                         mode='lines',
-                        name='mag'))
+                        name='mag',
+                        ))
 
     fig.update_layout(
         xaxis_title='Time',
@@ -268,7 +249,7 @@ def update_timePlot(feature):
 
 def update_line_plot(feature):
     fig = go.Figure(data=[
-                      go.Scatter(x = selectedUser_df[0].x, y = selectedUser_df[0][feature],
+                      go.Scatter(x = selectedUser_df.x, y = selectedUser_df[feature],
                                  mode='lines+markers',
                                  ),
                       ])
@@ -288,7 +269,7 @@ def update_line_plot(feature):
 
 def update_line_plot(feature):
     fig = go.Figure(data=[
-                      go.Scatter(x = selectedUser_df[0].x, y = selectedUser_df[0][feature],
+                      go.Scatter(x = selectedUser_df.x, y = selectedUser_df[feature],
                                  mode='lines+markers',
                                  ),
                       ])
@@ -304,3 +285,16 @@ def update_line_plot(feature):
 
 if __name__ == '__main__':
     app.run_server(debug=True)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
