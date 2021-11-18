@@ -109,9 +109,7 @@ def get_box_plts_data(f):
         days_f_avgs.append(users_f_avgs)
 
     return days_f_avgs
-print(users_data[0][0][0])
 get_box_plts_data(0)
-print(users_data[0][0][0])
 
 
 
@@ -128,7 +126,6 @@ def get_user_dataframe(num):
     elif i == 3: ff = "BPM"
     elif i == 4: ff = "Temperature"
     df = users_data[num][i][0]
-    print(df)
     temp.append(users_data[num][i][0].iloc[0][ff])
     # temp = np.concatenate([temp,(np.array(users_data[0][2][0].set_index('datetime').resample('3H').mean()['CaloriesToday']))])
     rough = np.array(users_data[num][i][0].set_index('datetime').resample('3H').mean()[ff])
@@ -250,6 +247,12 @@ app.layout = html.Div(className = 'big-container',children=[
         dcc.Graph(id="time-series"),
     ]),
     
+    html.Div([
+        html.Button('Delete Entry', id='submit-val', n_clicks=0, style={'color': 'blue', 'fontSize': 30, }),
+    ],style= {'display': 'flex', 'justify-content': 'center', 'align-items': 'center'}),
+    html.Div([
+        html.P(children = [html.Br()])
+    ]),
     html.Div(className = 'footer', children = [
         html.P(children = ['CS492, KAIST. 2021', html.Br(), 'DP-4'])
     ])
