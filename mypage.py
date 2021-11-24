@@ -64,10 +64,14 @@ for i in range(len(features)):
         values = result.get('values', [])
         # print(values)
         df = pd.DataFrame(values, columns= values.pop(0))
+        # print(df.head(3))
+        # print(df.tail(3))
         final = pd.concat([final, df], ignore_index=True)
-    print(final.head())
+        # print(final.head(3))
+        # print(final.tail(3))
+    # print(final.head())
     final = final.drop(final.columns[0], axis = 1)
-    print(final.head())
+    # print(final.head())
     f_dfs.append(final)
     # print(f_dfs.head())
     # print(f_dfs.tail())
@@ -79,9 +83,7 @@ for i in range(len(features)):
         #         # Print columns A and E, which correspond to indices 0 and 4.
         #         print('%s, %s' % (row[0], row[1]))
 
-        
-        
-    
+
     
     
     # df = pd.read_feather('data/'+ f +'.feather')
@@ -103,7 +105,6 @@ def get_date_user_df(f_df, date, user):
     return df
 # getting box plots data for a given feature
 def get_box_plts_df(f):
-    print(f)
     f_df = f_dfs[f]
     date_dfs = []
     for date in dates:
@@ -111,6 +112,7 @@ def get_box_plts_df(f):
         avgs = []
         for user in users:
             df = get_date_user_df(f_df, date, user)
+            df[metrics[f]] = pd.to_numeric(df[metrics[f]])
             avg = df[metrics[f]].mean() # nan outlier not shown
             avgs.append(avg)
         date_df['User'] = users
@@ -143,10 +145,11 @@ def create_line_plt(feature, date=dates[2], user=users[1]):
     line_plt_df.set_index(pd.to_datetime(line_plt_df['datetime']), inplace=True)
     
     df = pd.DataFrame()
+    line_plt_df[metrics[f]] = pd.to_numeric(line_plt_df[metrics[f]])
     df['Avg'] = line_plt_df[metrics[f]].resample('3H').mean()
     df['H'] = df.index.hour
 
-    H_avg = {0:0, 3:0, 6:0, 9:0, 12:0, 15:0, 18:0, 21:0}
+    H_avg = {0-3:0, 3-6:0, 6-9:0, 9-12:0, 12-15:0, 15-18:0, 18-21:0, 21-24:0}
     hs = list(df['H'])
     avgs = list(df['Avg'])
     for h in range(len(hs)):
@@ -164,6 +167,7 @@ def create_time_plt(feature, date=dates[2], user=users[1]):
     f = features.index(feature)
     
     time_plt_df = get_date_user_df(f_dfs[f], date, user)
+    time_plt_df[metrics[f]] = pd.to_numeric(time_plt_df[metrics[f]])
     fig = px.scatter(time_plt_df, 
                      x=time_plt_df['datetime'], 
                      y=time_plt_df[metrics[f]], 
@@ -190,7 +194,7 @@ app.layout = html.Div(className = 'big-container', children = [
                     id='first-feature-dropdown',
                     options=[{'label': x, 'value': x} 
                             for x in features],
-                    value=features[2]
+                    value = features[0]
                 ),
 
                 dcc.Graph(id='box-plot')
@@ -205,7 +209,7 @@ app.layout = html.Div(className = 'big-container', children = [
                     id='feature-dropdown',
                     options=[{'label': x, 'value': x}
                             for x in features],
-                    value=features[1]
+                    value = features[0]
                 ),
             html.Div(
                     dcc.Graph(
