@@ -55,7 +55,7 @@ features = ['BatteryEntity', 'Calories', 'HeartRate', 'SkinTemperature']
 metrics = ['level', 'CaloriesToday', 'BPM', 'Temperature']
 subjects = ['P0701', 'P0702', 'P0703', 'P0704', 'P0705', 
             'P0706', 'P0707', 'P0708', 'P0709', 'P0710']
-dates = ['2019-05-08', '2019-05-09', '2019-05-10']
+dates = ['2019-05-08', '2019-05-09', '2019-05-10', '2019-05-11']
 
 # all feature dfs
 f_dfs = []
