@@ -1,291 +1,352 @@
-from __future__ import print_function
-from flask import Flask
 import dash
+from dash.dependencies import Input, Output
+from dash import dash_table
+import dash_core_components as dcc
+import dash_html_components as html
+import pandas as pd
+import numpy as np
+from flask import Flask
 from dash import dcc
 from dash import html
 import dash_bootstrap_components as dbc
 from plotly.validator_cache import ValidatorCache
+from plotly.graph_objects import Layout
 import pandas as pd
 import plotly.express as px
-
-import os.path
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
+import plotly.graph_objects as go
 
 
-# If modifying these scopes, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
-
-spreadsheet_id = [['1CYTk-SJq6RSm4s2PirDNppeYVuDBixqGjB75W0jtj24', '176vw2-FwF03RTZUXY79JN_ERALfrP4Tnt40Zd3NMRIY', '1fR5aoX0zRArw_JG2QSiB_njumMZBLcWBDB3iwtYYkLs'],['1UwscbOHV2R2m-TlbpSVSfP_25vPh1mNPviW5o2RcBQc', '1b3vai7r0KzgpsnaJvNERuE7XOZgSB-5ROR_pEdxEH9o', '1PnLufjPJ953noRFBd1CMBby8rBxp489hk3nUGOBiCT4'], ['1Fg3mw_X4mtdHRIF4ZMnwZqDRRVtUQeFOWDm1mtk3MXg', '1K8F__7sxL2b0Xc6WeW_euAlTNDDGQMZIL0OLqZJ4xFk', '1EjSlvL-BjI40uaavBHBb760AA87fXR_SN31OJ62ddrg'], ['1hP1CHwVlBdmdLjsw0oAIMyZoWnYEBSYTIrqIAWYF3-s', '1f1AaXsunUm-CCs3Mpfk8Sz6T3iLuFGhLfJL8OLUHH9A', '1avxZJC0KhKjxEOIl-e6STjIA3k7dAyyr8MHCCSEB25w']]
-range_name = [['BatteryEntity_2019-05-08', 'BatteryEntity_2019-05-09', 'BatteryEntity_2019-05-10'], ['Calories_2019-05-08', 'Calories_2019-05-09', 'Calories_2019-05-10'], ['HeartRate_2019-05-08', 'HeartRate_2019-05-09', 'HeartRate_2019-05-10'], ['SkinTemperature_2019-05-08', 'SkinTemperature_2019-05-09', 'SkinTemperature_2019-05-10']]
-
-# each feature contains all file nos.
-features = ['BatteryEntity', 'Calories', 'HeartRate', 'SkinTemperature']
-file_nos = ['5572736000', '5573600000', '5574464000', '5575328000', '5576192000', '5577056000', '5577920000']
-
-users = ['P0701', 'P0702', 'P0703', 'P0704', 'P0705', 'P0706', 'P0707', 'P0708', 'P0709', 'P0710']
-dates = ['2019-05-08', '2019-05-09', '2019-05-10']
-
+test_df = pd.DataFrame()
+user_test = 0
+features = ['Avg BatteryLevel', 'Avg Calories per day', 'Avg HeartRate', 'Avg SkinTemperature']
 metrics = ['level', 'CaloriesToday', 'BPM', 'Temperature']
-
-# all feature dfs
-f_dfs = []
-
-for i in range(len(features)):
-    final = pd.DataFrame() 
-    for j in range(len(range_name[i])):
-        creds = None
-        # The file token.json stores the user's access and refresh tokens, and is
-        # created automatically when the authorization flow completes for the first
-        # time.
-        if os.path.exists('token.json'):
-            creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-        # If there are no (valid) credentials available, let the user log in.
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    'credentials.json', SCOPES)
-                creds = flow.run_local_server(port=0)
-            # Save the credentials for the next run
-            with open('token.json', 'w') as token:
-                token.write(creds.to_json())
-
-        service = build('sheets', 'v4', credentials=creds)
-
-        # Call the Sheets API
-        sheet = service.spreadsheets()
-        result = sheet.values().get(spreadsheetId= spreadsheet_id[i][j],
-                                    range= range_name[i][j]).execute()
-        values = result.get('values', [])
-        # print(values)
-        df = pd.DataFrame(values, columns= values.pop(0))
-        # print(df.head(3))
-        # print(df.tail(3))
-        final = pd.concat([final, df], ignore_index=True)
-        # print(final.head(3))
-        # print(final.tail(3))
-    # print(final.head())
-    final = final.drop(final.columns[0], axis = 1)
-    # print(final.head())
-    f_dfs.append(final)
-    # print(f_dfs.head())
-    # print(f_dfs.tail())
-        # if not values:
-        #     print('No data found.')
-        # else:
-        #     print('Name, Major:')
-        #     for row in values:
-        #         # Print columns A and E, which correspond to indices 0 and 4.
-        #         print('%s, %s' % (row[0], row[1]))
+subjects = ['P0701', 'P0702', 'P0703', 'P0704', 'P0705', 
+            'P0706', 'P0707', 'P0708', 'P0709', 'P0710']
+dates = ['2019-05-08', '2019-05-09', '2019-05-10', '2019-05-11']
 
 
-    
-    
-    # df = pd.read_feather('data/'+ f +'.feather')
-    # df = df.drop(df.columns[0], axis=1)
-    # f_dfs.append(df)
 
-# get df by date and user
-def get_date_user_df(f_df, date, user):
-    if date == '2019-05-08':
-        df = f_df.loc[(f_df['datetime']>='2019-05-08 00:00:00.000') & 
-                      (f_df['datetime']<'2019-05-09 00:00:00.000')]
-    elif date == '2019-05-09':
-        df = f_df.loc[(f_df['datetime']>='2019-05-09 00:00:00.000') & 
-                      (f_df['datetime']<'2019-05-10 00:00:00.000')]
-    elif date == '2019-05-10':
-        df = f_df.loc[(f_df['datetime']>='2019-05-10 00:00:00.000') & 
-                      (f_df['datetime']<'2019-05-11 00:00:00.000')]
-    df = df.loc[df['user'] == user]
-    return df
-# getting box plots data for a given feature
-def get_box_plts_df(f):
-    f_df = f_dfs[f]
-    date_dfs = []
-    for date in dates:
-        date_df = pd.DataFrame()
-        avgs = []
-        for user in users:
-            df = get_date_user_df(f_df, date, user)
-            df[metrics[f]] = pd.to_numeric(df[metrics[f]])
-            avg = df[metrics[f]].mean() # nan outlier not shown
-            avgs.append(avg)
-        date_df['User'] = users
-        date_df['Date'] = date
-        date_df['Avg'] = avgs
-        date_dfs.append(date_df)
-    return pd.concat(date_dfs, ignore_index=True)
-
-# creating box plots for a feature on several days
-def create_box_plts(feature):
-    # print(feature)
-    f = features.index(feature)
-    
-    box_plts_df = get_box_plts_df(f)
-    
-    fig = px.box(box_plts_df, 
-                 x='Date', 
-                 y='Avg', 
-                 hover_name='User', 
-                 points='all', 
-                 title='Avg. '+ features[f] +' Values')
-    
-    return fig
-
-# creating feature line plot with specific date and user
-def create_line_plt(feature, date=dates[2], user=users[1]):
-    f = features.index(feature)
-    
-    line_plt_df = get_date_user_df(f_dfs[f], date, user)
-    line_plt_df.set_index(pd.to_datetime(line_plt_df['datetime']), inplace=True)
-    
-    df = pd.DataFrame()
-    line_plt_df[metrics[f]] = pd.to_numeric(line_plt_df[metrics[f]])
-    df['Avg'] = line_plt_df[metrics[f]].resample('3H').mean()
-    df['H'] = df.index.hour
-
-    H_avg = {0-3:0, 3-6:0, 6-9:0, 9-12:0, 12-15:0, 15-18:0, 18-21:0, 21-24:0}
-    hs = list(df['H'])
-    avgs = list(df['Avg'])
-    for h in range(len(hs)):
-        H_avg[hs[h]] = avgs[h]
-    
-    fig = px.scatter(x=list(H_avg.keys()), 
-                     y=list(H_avg.values()), 
-                     labels=dict(x='Time', y=features[f]), height=200)
-    fig.update_traces(mode='lines+markers')
-    fig.update_xaxes(tick0=0, dtick=3)
-    return fig
-
-# creating feature time plot with specific date and user
-def create_time_plt(feature, date=dates[2], user=users[1]):
-    f = features.index(feature)
-    
-    time_plt_df = get_date_user_df(f_dfs[f], date, user)
-    time_plt_df[metrics[f]] = pd.to_numeric(time_plt_df[metrics[f]])
-    fig = px.scatter(time_plt_df, 
-                     x=time_plt_df['datetime'], 
-                     y=time_plt_df[metrics[f]], 
-                     labels=dict(datetime='Time'))
-    fig.update_traces(mode='lines',)
-    return fig
-
+df = pd.read_csv('data/box-plot-'+'0'+'.csv')
+df['id'] = df['Subject']
+df.set_index('id', inplace=True, drop=False)
 
 server = Flask(__name__)
 app = dash.Dash(__name__, server = server, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
-app.layout = html.Div(className = 'big-container', children = [
-    html.Div(className = 'header', children = [
-        html.H1(html.I('Data Viz for filtering outliers:'))
+
+
+
+app.layout = html.Div(className='big-container', children=[
+    html.Div(className='header', children=[
+        html.H1(html.I('Data Cleanup Dashboard'))
     ]),
-
-    html.Div(className = 'inner-container', children = [
-        html.H5('Average Data Type Trend Over a Day', style={'color': 'blue', 'fontSize': 30, 'text-align': 'right'}),
-        html.P('Choose the dataType', style={'color': 'green', 'text-align': 'right', 'fontSize': 20, 'position': 'absolute',  'top': '220px', 'right': '300px', 'font-weight': 'bold'}),
-
-        html.Div(children = [
-            html.Div([
+    html.Div([
+            html.Br(),
+            html.Div(children=[
+                html.H5('Select Day:', 
+                style={
+                    'color': 'blue', 
+                    'fontSize': 25, 
+                    'text-align': 'center'
+                }),
                 dcc.Dropdown(
-                    id='first-feature-dropdown',
-                    options=[{'label': x, 'value': x} 
-                            for x in features],
-                    value = features[0]
-                ),
+                    id='date-dropdown',
+                    options=[{'label': d, 'value': d}
+                            for d in range(len(dates))],
+                    value= 0
+                )],style={
+                'display': 'inline-block',
+                'width': 230,
+            }),
+            html.Br(),
+            html.Br(),
 
+            dash_table.DataTable(
+                id='datatable-interactivity',
+                columns=[
+                    {"name": i, "id": i, "deletable": False, "selectable": True} for i in df.columns
+                    if i != 'id'
+                ],
+                style_cell={
+                    # 'backgroundColor': 'rgb(208, 193, 230)',
+                    'color': 'black',
+                    'textAlign': 'center'
+                }, 
+                style_cell_conditional=[
+                    {
+                        'if': {'column_id': c},
+                        'textAlign': 'left'
+                    } for c in ['Subject', 'Date']
+                ],
+                
+                # style_data={
+                #     'color': 'black',
+                #     'backgroundColor': 'rgb(208, 193, 230)'
+                # },
+                # style_data_conditional=[
+                #     {
+                #         'if': {'row_index': 'odd'},
+                #         'backgroundColor': 'red',
+                #     }
+                # ],
+                # style_header={
+                #     'backgroundColor': 'rgb(210, 210, 210)',
+                #     'color': 'black',
+                #     'fontWeight': 'bold'
+                # },
+                
+                style_data_conditional=[                
+                {
+                    "if": {"state": "selected"},  # 'active' | 'selected'
+                    "backgroundColor": "rgba(0, 116, 217, 0.3)",
+                    "border": "1px solid blue",
+                },
+                {
+                    "if": {"state": "active"},  # 'active' | 'selected'
+                    "backgroundColor": "rgba(0, 116, 217, 0.3)",
+                    "border": "1px solid rgb(0, 116, 217)",
+                },
+            ], 
+                data=df.to_dict('records'),
+                editable=True,
+                filter_action="native",
+                sort_action="native",
+                sort_mode="multi",
+                column_selectable="single",
+                row_selectable="multi",
+                row_deletable=True,
+                selected_columns=[],
+                selected_rows=[],
+                page_action="native",
+                page_current= 0,
+                page_size= 10,
+                
+            ),
+            ]),
+    html.Br(),
+    
+    html.Div(className='inner-container', children=[     
+        html.Div(children=[
+            html.Div(children=[
+                html.H5('Subjects Day Averages', 
+                style={
+                    'color': 'blue', 
+                    'fontSize': 25, 
+                    'text-align': 'center'
+                }),
                 dcc.Graph(id='box-plot')
             ],
             style={
                 'display': 'inline-block',
-                'width': 650,
-                'border': '2px black solid'
+                'height': 500,
+                'width': 500,
+                'border': '2px grey solid'
             }),
-            html.Div([
-                dcc.Dropdown(
-                    id='feature-dropdown',
-                    options=[{'label': x, 'value': x}
-                            for x in features],
-                    value = features[0]
-                ),
-            html.Div(
-                    dcc.Graph(
-                        id = "fig-rt-top"
-                    ),
-                ),  
-            html.Div(
-                    dcc.Graph(
-                        id='fig-rt-down'
-                    ),
-                ),  
+            
+            html.Div(children=[
+                html.H5('Subject Day Trend', 
+                style={
+                    'color': 'blue', 
+                    'fontSize': 25, 
+                    'text-align': 'center'
+                }),
+                dcc.Graph(id='line-plt-top',
+                          style={'height': 210}),
+                html.Div(children = [dcc.Dropdown(
+                    id='second-feature-dropdown',
+                    options=[{'label': f, 'value': f}
+                            for f in features],
+                    value=features[0]
+                )], style = {'width': 200}),
+                dcc.Graph(id='line-plt-down',
+                          style={'height': 210, 'padding': 0})
             ],  
             style={
-                'marginLeft': 20,
+                'marginLeft': 150,
+                'height': 500,
                 'width': 520,
                 'display': 'inline-block',
-                'border': '2px black solid'
-            }),
-        ]),
+                'border': '2px solid',
+                'border-color': 'rgb(208, 193, 230)'
+            })
+        ], 
+        style={
+            'margin-top': '10px', 
+            'margin-bottom': '10px'
+        }),
 
-        html.Div(className = 'bg-light p-1', children = [
-            html.H2(html.Span('Time Series Visualization with Range Slider', className = 'fw-light'), className = 'm-3 text-center')
+        html.Div(className='bg-light p-1', children=[
+            html.H2(html.Span('Subject Day Values', className='fw-light'), className='m-3 text-center'),
+            
+            dcc.Graph(id='time-plt')
         ]),
+        
     ]),
     
-    dcc.Graph(id='time-series'),
-    
-    html.Button(
-        'Delete Entry', 
-        id='del-entry', 
-        style={
-            'color': 'blue', 
-            'fontSize': 30, 
-            'display': 'flex', 
-            'justify-content': 'center', 
-            'align-items': 'center', 
-            'margin': 'auto', 
-            'border-radius': '12px', 
-            'margin-bottom': '10px'}
-    ),
-    
-    html.Div(className = 'footer', children = [
-        html.P(children = ['CS492, KAIST. 2021', html.Br(), 'DP-5'])
+    html.Div(className='footer', children=[
+        html.P(children=['CS492, KAIST. 2021', html.Br(), 'DP-5'])
     ])
 ])
 
+# @app.callback(
+#     Output('ad', None),
+#     Input('date-dropdown', 'value'))
+# def updatedf(date):
+#     global df
+#     df = pd.read_csv('data/box-plot-' + date+ '.csv')
+#     df['id'] = df['Subject']
+#     df.set_index('id', inplace=True, drop=False)
+#     return 
 
 @app.callback(
-    dash.dependencies.Output('box-plot', 'figure'), 
-    dash.dependencies.Input('first-feature-dropdown', 'value'))
-def update_boxplot(feature):
-    fig = create_box_plts(feature)
-    return fig
+    Output('datatable-interactivity', 'style_data_conditional'),
+    Input('datatable-interactivity', 'selected_columns'),
+    Input('date-dropdown', 'value'))
+
+def update_styles(selected_columns, date):
+    return [{
+        'if': { 'column_id': i },
+        'background_color': '#D2F3FF'
+    } for i in selected_columns]
 
 @app.callback(
-    dash.dependencies.Output('fig-rt-top', 'figure'),
-    [dash.dependencies.Input('first-feature-dropdown', 'value')])
-def update_line_plot_top(feature):
-    fig = create_line_plt(feature)
-    return fig
+    Output('datatable-interactivity', 'data'),
+    Input('date-dropdown', 'value'))
+def update_styles(date):
+    global df
+    if df['Date'][0] != dates[date]:
+        df = pd.read_csv('data/box-plot-' + str(date)+ '.csv')
+        df['id'] = df['Subject']
+        df.set_index('id', inplace=True, drop=False)
+        return df.to_dict('records')
+    # return(html.Div([dash_table.DataTable(
+    #     columns=[
+    #         {"name": i, "id": i, "deletable": False, "selectable": True} for i in df.columns
+    #         if i != 'id'
+    #     ],
+    #     data=df.to_dict('records'),
+    #     editable=True,
+    #     filter_action="native",
+    #     sort_action="native",
+    #     sort_mode="multi",
+    #     column_selectable="single",
+    #     row_selectable="multi",
+    #     row_deletable=True,
+    #     selected_columns=[],
+    #     selected_rows=[],
+    #     page_action="native",
+    #     page_current= 0,
+    #     page_size= 10,
+    # )]))
 
 @app.callback(
-    dash.dependencies.Output('fig-rt-down', 'figure'),
-    [dash.dependencies.Input('feature-dropdown', 'value')])
-def update_line_plot_down(feature):
-    fig = create_line_plt(feature)
+    Output('box-plot', "figure"),
+    Input('datatable-interactivity', 'selected_columns'),
+    Input('datatable-interactivity', "derived_virtual_data"),
+    Input('datatable-interactivity', "derived_virtual_selected_rows")
+)
+def update_styles(feature, rows, selectedpts):
+    if selectedpts is None:
+        selectedpts = []
+    # print("--",rows)
+    dff = df if rows is None else pd.DataFrame(rows)
+    dff[feature[0]] = pd.to_numeric(dff[feature[0]])
+    color = 'rgb(21, 97, 230)'
+    if selectedpts == []:
+        q1 = df[feature[0]].describe()['25%']
+        q3 = df[feature[0]].describe()['75%']
+        l1 = q1 -(q3-q1)*1.5
+        l2 = q3 + (q3-q1)*1.5
+        outlier = []
+        for i in range(len(df)):
+            if (df[feature[0]][i] < l1 or df[feature[0]][i] > l2): outlier.append(i)
+        selectedpts = outlier
+        color = 'red'
+    fig = go.Figure()
+    fig.add_trace(go.Box(
+        y= dff[feature[0]],
+        name="All Points",
+        jitter=0.3,
+        pointpos=-1.8,
+        selectedpoints = selectedpts,
+        boxpoints='all', # represent all points
+        marker_color=color,
+        line_color='rgb(121, 35, 219)'
+    ))
+    fig.update_layout(
+        margin=dict(l=20, r=20, t=0, b=0),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)')
     return fig
 
+
 @app.callback(
-    dash.dependencies.Output('time-series', 'figure'),
-    [dash.dependencies.Input('first-feature-dropdown', 'value')])
-def update_time_plot(feature):
-    fig = create_time_plt(feature)
+    Output('line-plt-top', 'figure'),
+    Input('datatable-interactivity', 'derived_virtual_row_ids'),
+    Input('datatable-interactivity', 'active_cell'),
+    Input('date-dropdown', 'value'))
+
+def update_graphs(row_ids, active_cell, date):
+    if(active_cell == None): return {}
+    # if active_cell == None: return fig.layout = {}
+    global user_test
+    if (user_test != active_cell['row_id']):
+        global test_df
+        test_df = pd.read_csv('data/line-'+active_cell['row_id']+'.csv')
+        user_test = active_cell['row_id']
+
+    test_df = test_df.iloc[date*8: date*8+8]
+    test_df[active_cell['column_id']] = pd.to_numeric(test_df[active_cell['column_id']])
+    H_avg = {'0-3':0, '3-6':0, '6-9':0, '9-12':0, '12-15':0, '15-18':0, '18-21':0, '21-24':0}
+    hs = list(test_df['H'])
+    avgs = list(test_df[active_cell['column_id']])
+    for h in range(len(hs)):
+        hrl = hs[h]
+        hrh = hs[h] + 3
+        hr = str(hrl) + '-' + str(hrh)
+        H_avg[hr] = avgs[h]
+    
+    fig = px.scatter(x=list(H_avg.keys()), 
+                     y=list(H_avg.values()), 
+                     labels=dict(x='Time', y= active_cell['column_id']))
+    fig.update_traces(mode='lines+markers')
+    fig.update_xaxes(tickangle=45)
+    fig.update_layout(
+        margin=dict(l=20, r=20, t=0, b=0),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)')
     return fig
+    
+    
+@app.callback(
+    Output('line-plt-down', 'figure'),
+    Input('second-feature-dropdown', 'value'),
+    Input('datatable-interactivity', 'active_cell'),
+    Input('date-dropdown', 'value'))
+def update_line_plt_down(feature, active_cell, date):
+    test_df[feature] = pd.to_numeric(test_df[feature])
+    H_avg = {'0-3':0, '3-6':0, '6-9':0, '9-12':0, '12-15':0, '15-18':0, '18-21':0, '21-24':0}
+    hs = list(test_df['H'])
+    avgs = list(test_df[feature])
+    for h in range(len(hs)):
+        hrl = hs[h]
+        hrh = hs[h] + 3
+        hr = str(hrl) + '-' + str(hrh)
+        H_avg[hr] = avgs[h]
+    
+    fig = px.scatter(x=list(H_avg.keys()), 
+                     y=list(H_avg.values()), 
+                     labels=dict(x='Time', y= active_cell['column_id']))
+    fig.update_traces(mode='lines+markers')
+    fig.update_xaxes(tickangle=45)
+    fig.update_layout(
+        margin=dict(l=20, r=20, t=0, b=0),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)')
+    return fig
+
 
 
 if __name__ == '__main__':
     app.run_server(debug=True)
-    
