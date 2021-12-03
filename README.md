@@ -11,6 +11,6 @@ Plan updated: Included an interactive table and included a scatter plot+ box plo
 * Bibek: Making Dash Table, box plots and link with line plots<br>
 * George: Making Time series plot and Data-preprocessing<br>
 Previous one:<br>
-<!-- * Bibek: Working on figure#-2 (line plots), figure#-3 (Time-series plot), data-preprocessing and deploying<br>
+* Bibek: Working on figure#-2 (line plots), figure#-3 (Time-series plot), data-preprocessing and deploying<br>
 * George: Working on figure#-1 (Box plots) and data-preprocessing
- -->
+
