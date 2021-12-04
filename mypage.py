@@ -141,7 +141,7 @@ app.layout = html.Div(className='big-container', children=[
                 'display': 'inline-block',
                 'height': 500,
                 'width': 500,
-                'border': '2px grey solid'
+                # 'border': '2px grey solid'
             }),
             
             html.Div(children=[
@@ -167,8 +167,8 @@ app.layout = html.Div(className='big-container', children=[
                 'height': 500,
                 'width': 520,
                 'display': 'inline-block',
-                'border': '2px solid',
-                'border-color': 'rgb(208, 193, 230)'
+                # 'border': '2px solid',
+                # 'border-color': 'rgb(208, 193, 230)'
             })
         ], 
         style={
@@ -201,10 +201,9 @@ app.layout = html.Div(className='big-container', children=[
 
 @app.callback(
     Output('datatable-interactivity', 'style_data_conditional'),
-    Input('datatable-interactivity', 'selected_columns'),
-    Input('date-dropdown', 'value'))
+    Input('datatable-interactivity', 'selected_columns'))
 
-def update_styles(selected_columns, date):
+def update_styles(selected_columns):
     return [{
         'if': { 'column_id': i },
         'background_color': '#D2F3FF'
@@ -250,7 +249,18 @@ def update_styles(feature, rows, selectedpts):
     if selectedpts is None:
         selectedpts = []
     # print("--",rows)
-    dff = df if rows is None else pd.DataFrame(rows)
+    test_dff = df if rows is None else pd.DataFrame(rows)
+    
+    # print(selectedpts)
+    new_selectedpts = []
+    for i in selectedpts:
+        # print("df", df)
+        # print("test", test_dff)
+        # print(list(df['Subject']))
+        # print(test_dff.iloc[i]['Subject'], list(df['Subject']).index(test_dff.iloc[i]['Subject']))
+        new_selectedpts.append(list(df['Subject']).index(test_dff.iloc[i]['Subject']))
+    dff = df
+    if feature == []: return {}
     dff[feature[0]] = pd.to_numeric(dff[feature[0]])
     color = 'rgb(21, 97, 230)'
     if selectedpts == []:
@@ -261,15 +271,16 @@ def update_styles(feature, rows, selectedpts):
         outlier = []
         for i in range(len(df)):
             if (df[feature[0]][i] < l1 or df[feature[0]][i] > l2): outlier.append(i)
-        selectedpts = outlier
+        new_selectedpts = outlier
         color = 'red'
     fig = go.Figure()
     fig.add_trace(go.Box(
         y= dff[feature[0]],
-        name="All Points",
+        
+        name= feature[0],
         jitter=0.3,
         pointpos=-1.8,
-        selectedpoints = selectedpts,
+        selectedpoints = new_selectedpts,
         boxpoints='all', # represent all points
         marker_color=color,
         line_color='rgb(121, 35, 219)'
@@ -277,7 +288,22 @@ def update_styles(feature, rows, selectedpts):
     fig.update_layout(
         margin=dict(l=20, r=20, t=0, b=0),
         paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)')
+        plot_bgcolor='rgba(0,0,0,0)',
+        # hoverlabel=dict(
+        # bgcolor="white",
+        # font_size=16,
+        # font_family="Rockwell",
+        # align = "right"
+        # ),
+        # hovermode="y unified")
+    )
+    fig.update_yaxes( 
+        linecolor="rgb(121, 35, 219)",
+        showgrid=False,
+        ticks="inside"
+        )
+ 
+
     return fig
 
 
@@ -291,12 +317,13 @@ def update_graphs(row_ids, active_cell, date):
     if(active_cell == None): return {}
     # if active_cell == None: return fig.layout = {}
     global user_test
+    print(user_test, active_cell['row_id'])
     if (user_test != active_cell['row_id']):
         global test_df
         test_df = pd.read_csv('data/line-'+active_cell['row_id']+'.csv')
         user_test = active_cell['row_id']
+        test_df = test_df.iloc[date*8: date*8+8]
 
-    test_df = test_df.iloc[date*8: date*8+8]
     test_df[active_cell['column_id']] = pd.to_numeric(test_df[active_cell['column_id']])
     H_avg = {'0-3':0, '3-6':0, '6-9':0, '9-12':0, '12-15':0, '15-18':0, '18-21':0, '21-24':0}
     hs = list(test_df['H'])
@@ -316,6 +343,8 @@ def update_graphs(row_ids, active_cell, date):
         margin=dict(l=20, r=20, t=0, b=0),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)')
+    fig.update_xaxes(ticks="inside", linecolor="blue")
+    fig.update_yaxes(ticks="inside", linecolor="blue")
     return fig
     
     
@@ -325,6 +354,7 @@ def update_graphs(row_ids, active_cell, date):
     Input('datatable-interactivity', 'active_cell'),
     Input('date-dropdown', 'value'))
 def update_line_plt_down(feature, active_cell, date):
+    if (test_df.empty): return {}
     test_df[feature] = pd.to_numeric(test_df[feature])
     H_avg = {'0-3':0, '3-6':0, '6-9':0, '9-12':0, '12-15':0, '15-18':0, '18-21':0, '21-24':0}
     hs = list(test_df['H'])
@@ -337,13 +367,15 @@ def update_line_plt_down(feature, active_cell, date):
     
     fig = px.scatter(x=list(H_avg.keys()), 
                      y=list(H_avg.values()), 
-                     labels=dict(x='Time', y= active_cell['column_id']))
+                     labels=dict(x='Time', y= feature))
     fig.update_traces(mode='lines+markers')
     fig.update_xaxes(tickangle=45)
     fig.update_layout(
         margin=dict(l=20, r=20, t=0, b=0),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)')
+    fig.update_xaxes(ticks="inside", linecolor="blue")
+    fig.update_yaxes(ticks="inside", linecolor="blue")  
     return fig
 
 
