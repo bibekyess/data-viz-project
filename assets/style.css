@@ -54,3 +54,7 @@
     text-align: center;
     justify-content: center;
 }
+.datatable-interactivity .row {
+    display: block;
+    margin: 0;
+  }

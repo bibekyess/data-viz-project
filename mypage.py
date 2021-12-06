@@ -1,5 +1,5 @@
 import dash
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 from dash import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
@@ -16,7 +16,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 
-
+deleted_entries = []
 test_df = pd.DataFrame()
 user_test = 0
 features = ['Avg BatteryLevel', 'Avg Calories per day', 'Avg HeartRate', 'Avg SkinTemperature']
@@ -53,8 +53,8 @@ app.layout = html.Div(className='big-container', children=[
                 dcc.Dropdown(
                     id='date-dropdown',
                     options=[{'label': d, 'value': d}
-                            for d in range(len(dates))],
-                    value= 0
+                            for d in dates],
+                    value= dates[0]
                 )],style={
                 'display': 'inline-block',
                 'width': 230,
@@ -68,17 +68,25 @@ app.layout = html.Div(className='big-container', children=[
                     {"name": i, "id": i, "deletable": False, "selectable": True} for i in df.columns
                     if i != 'id'
                 ],
+                # style_cell={
+                #     # 'backgroundColor': 'rgb(208, 193, 230)',
+                #     'color': 'black',
+                #     'textAlign': 'center'
+                # }, 
                 style_cell={
-                    # 'backgroundColor': 'rgb(208, 193, 230)',
-                    'color': 'black',
-                    'textAlign': 'center'
-                }, 
+                    'height': 'auto',
+                    # all three widths are needed
+                    'minWidth': '180px', 'width': '180px', 'maxWidth': '180px',
+                    'whiteSpace': 'normal'
+                },
                 style_cell_conditional=[
                     {
                         'if': {'column_id': c},
                         'textAlign': 'left'
                     } for c in ['Subject', 'Date']
                 ],
+                style_table={'overflowX': 'scroll', 'overflowY': 'scroll', 'maxHeight':'180px', 'border': '1px solid #545b62'},
+                style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
                 
                 # style_data={
                 #     'color': 'black',
@@ -109,7 +117,8 @@ app.layout = html.Div(className='big-container', children=[
                 },
             ], 
                 data=df.to_dict('records'),
-                editable=True,
+                editable=False,
+                fixed_rows={'headers': True,},
                 filter_action="native",
                 sort_action="native",
                 sort_mode="multi",
@@ -120,7 +129,7 @@ app.layout = html.Div(className='big-container', children=[
                 selected_rows=[],
                 page_action="native",
                 page_current= 0,
-                page_size= 10,
+                page_size= 5,
                 
             ),
             ]),
@@ -179,7 +188,7 @@ app.layout = html.Div(className='big-container', children=[
         html.Div(className='bg-light p-1', children=[
             html.H2(html.Span('Subject Day Values', className='fw-light'), className='m-3 text-center'),
             
-            dcc.Graph(id='time-plt')
+            html.Div(id='output')
         ]),
         
     ]),
@@ -213,31 +222,13 @@ def update_styles(selected_columns):
     Output('datatable-interactivity', 'data'),
     Input('date-dropdown', 'value'))
 def update_styles(date):
+    # print("date-", date)
     global df
-    if df['Date'][0] != dates[date]:
-        df = pd.read_csv('data/box-plot-' + str(date)+ '.csv')
+    if df['Date'][0] != date:
+        df = pd.read_csv('data/box-plot-' + str(dates.index(date))+ '.csv')
         df['id'] = df['Subject']
         df.set_index('id', inplace=True, drop=False)
-        return df.to_dict('records')
-    # return(html.Div([dash_table.DataTable(
-    #     columns=[
-    #         {"name": i, "id": i, "deletable": False, "selectable": True} for i in df.columns
-    #         if i != 'id'
-    #     ],
-    #     data=df.to_dict('records'),
-    #     editable=True,
-    #     filter_action="native",
-    #     sort_action="native",
-    #     sort_mode="multi",
-    #     column_selectable="single",
-    #     row_selectable="multi",
-    #     row_deletable=True,
-    #     selected_columns=[],
-    #     selected_rows=[],
-    #     page_action="native",
-    #     page_current= 0,
-    #     page_size= 10,
-    # )]))
+    return df.to_dict('records')
 
 @app.callback(
     Output('box-plot', "figure"),
@@ -248,19 +239,13 @@ def update_styles(date):
 def update_styles(feature, rows, selectedpts):
     if selectedpts is None:
         selectedpts = []
-    # print("--",rows)
     test_dff = df if rows is None else pd.DataFrame(rows)
     
-    # print(selectedpts)
     new_selectedpts = []
     for i in selectedpts:
-        # print("df", df)
-        # print("test", test_dff)
-        # print(list(df['Subject']))
-        # print(test_dff.iloc[i]['Subject'], list(df['Subject']).index(test_dff.iloc[i]['Subject']))
         new_selectedpts.append(list(df['Subject']).index(test_dff.iloc[i]['Subject']))
     dff = df
-    if feature == []: return {}
+    if feature == []: feature.append('Avg BatteryLevel')
     dff[feature[0]] = pd.to_numeric(dff[feature[0]])
     color = 'rgb(21, 97, 230)'
     if selectedpts == []:
@@ -289,13 +274,6 @@ def update_styles(feature, rows, selectedpts):
         margin=dict(l=20, r=20, t=0, b=0),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        # hoverlabel=dict(
-        # bgcolor="white",
-        # font_size=16,
-        # font_family="Rockwell",
-        # align = "right"
-        # ),
-        # hovermode="y unified")
     )
     fig.update_yaxes( 
         linecolor="rgb(121, 35, 219)",
@@ -309,15 +287,16 @@ def update_styles(feature, rows, selectedpts):
 
 @app.callback(
     Output('line-plt-top', 'figure'),
-    Input('datatable-interactivity', 'derived_virtual_row_ids'),
     Input('datatable-interactivity', 'active_cell'),
     Input('date-dropdown', 'value'))
 
-def update_graphs(row_ids, active_cell, date):
-    if(active_cell == None): return {}
+def update_graphs(active_cell, date):
+    date = dates.index(date)
+    if(active_cell == None): active_cell={'row': 0, 'column': 2, 'column_id': 'Avg BatteryLevel', 'row_id': 'P0701'}
     # if active_cell == None: return fig.layout = {}
+    # print("first")
     global user_test
-    print(user_test, active_cell['row_id'])
+    # print(user_test, active_cell['row_id'])
     if (user_test != active_cell['row_id']):
         global test_df
         test_df = pd.read_csv('data/line-'+active_cell['row_id']+'.csv')
@@ -350,11 +329,10 @@ def update_graphs(row_ids, active_cell, date):
     
 @app.callback(
     Output('line-plt-down', 'figure'),
-    Input('second-feature-dropdown', 'value'),
-    Input('datatable-interactivity', 'active_cell'),
-    Input('date-dropdown', 'value'))
-def update_line_plt_down(feature, active_cell, date):
-    if (test_df.empty): return {}
+    Input('second-feature-dropdown', 'value'))
+def update_line_plt_down(feature):
+    global test_df
+    if (test_df.empty): test_df = pd.read_csv('data/beginning_for_second_line.csv')
     test_df[feature] = pd.to_numeric(test_df[feature])
     H_avg = {'0-3':0, '3-6':0, '6-9':0, '9-12':0, '12-15':0, '15-18':0, '18-21':0, '21-24':0}
     hs = list(test_df['H'])
@@ -378,7 +356,20 @@ def update_line_plt_down(feature, active_cell, date):
     fig.update_yaxes(ticks="inside", linecolor="blue")  
     return fig
 
-
+@app.callback(Output('output', 'children'),
+              [Input('datatable-interactivity', 'data_previous')],
+              [State('datatable-interactivity', 'data')])
+def show_removed_rows(previous, current):
+    global deleted_entries
+    if previous!= None:
+        for row in previous:
+            if row not in current:
+                a = "User: " + row['Subject'] + "   Date: "+ row['Date']
+                deleted_entries.append(a)
+    if previous is None:
+        dash.exceptions.PreventUpdate()
+    else:
+        return deleted_entries
 
 if __name__ == '__main__':
     app.run_server(debug=True)
