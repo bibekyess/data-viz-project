@@ -1,3 +1,4 @@
+from typing import Text
 import dash
 from dash.dependencies import Input, Output, State
 from dash import dash_table
@@ -43,6 +44,32 @@ app.layout = html.Div(className='big-container', children=[
     ]),
     html.Div([
             html.Br(),
+            html.H5('1. Select each column (data-type) to view the box-plot.', 
+                style={
+                    'color': 'green', 
+                    'fontSize': 20, 
+                    'text-align': 'left'
+                }),
+            html.H5('2. Click on the data-value on the box to view the line-plot of that data-type and user.', 
+                style={
+                    'color': 'green', 
+                    'fontSize': 20, 
+                    'text-align': 'left'
+                }),
+            html.H5('3. Click on the ❌ mark to delete the user-entry. The deleted entries appears on the end of page.', 
+                style={
+                    'color': 'green', 
+                    'fontSize': 20, 
+                    'text-align': 'left'
+                }),
+            html.H5('3. From the box-plot, find the lower or higher threeshold value and use filter row of table to filter the entries. You can use "<40", ">200" or "P0701" without inverted commas to filter the entries.', 
+                style={
+                    'color': 'green', 
+                    'fontSize': 20, 
+                    'text-align': 'left'
+                }),
+            html.Br(),
+            
             html.Div(children=[
                 html.H5('Select Day:', 
                 style={
@@ -77,7 +104,8 @@ app.layout = html.Div(className='big-container', children=[
                     'height': 'auto',
                     # all three widths are needed
                     'minWidth': '180px', 'width': '180px', 'maxWidth': '180px',
-                    'whiteSpace': 'normal'
+                    'whiteSpace': 'normal',
+                    'textAlign': 'center'
                 },
                 style_cell_conditional=[
                     {
@@ -85,37 +113,43 @@ app.layout = html.Div(className='big-container', children=[
                         'textAlign': 'left'
                     } for c in ['Subject', 'Date']
                 ],
-                style_table={'overflowX': 'scroll', 'overflowY': 'scroll', 'maxHeight':'180px', 'border': '1px solid #545b62'},
-                style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
+                style_table={'overflowX': 'scroll', 'overflowY': 'scroll', 'border': '1px solid #545b62'},
+                # style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
                 
+                style_header={
+                    'backgroundColor': 'white',
+                    'fontWeight': 'bold',
+                    'borderBottom': '1px solid black'
+                },
                 # style_data={
                 #     'color': 'black',
                 #     'backgroundColor': 'rgb(208, 193, 230)'
                 # },
-                # style_data_conditional=[
-                #     {
-                #         'if': {'row_index': 'odd'},
-                #         'backgroundColor': 'red',
-                #     }
-                # ],
+                style_data_conditional=[
+                    {
+                        'if': {'row_index': 'odd'},
+                        'backgroundColor': 'red',
+                    }
+                ],
                 # style_header={
                 #     'backgroundColor': 'rgb(210, 210, 210)',
                 #     'color': 'black',
                 #     'fontWeight': 'bold'
                 # },
                 
-                style_data_conditional=[                
-                {
-                    "if": {"state": "selected"},  # 'active' | 'selected'
-                    "backgroundColor": "rgba(0, 116, 217, 0.3)",
-                    "border": "1px solid blue",
-                },
-                {
-                    "if": {"state": "active"},  # 'active' | 'selected'
-                    "backgroundColor": "rgba(0, 116, 217, 0.3)",
-                    "border": "1px solid rgb(0, 116, 217)",
-                },
-            ], 
+            #     style_data_conditional=[                
+            #     {
+            #         "if": {"state": "selected"},  # 'active' | 'selected'
+            #         "backgroundColor": "rgba(0, 116, 217, 0.3)",
+            #         "border": "1px solid blue",
+            #     },
+            #     {
+            #         "if": {"state": "active"},  # 'active' | 'selected'
+            #         "backgroundColor": "rgba(0, 116, 217, 0.3)",
+            #         "border": "1px solid rgb(0, 116, 217)",
+            #     },
+            # ], 
+                style_as_list_view=True,
                 data=df.to_dict('records'),
                 editable=False,
                 fixed_rows={'headers': True,},
@@ -133,17 +167,36 @@ app.layout = html.Div(className='big-container', children=[
                 
             ),
             ]),
-    html.Br(),
     
     html.Div(className='inner-container', children=[     
         html.Div(children=[
             html.Div(children=[
+                html.Div(children=[
+                    html.H5('Select Outlier setting: IQR * ?', 
+                    style={
+                        'color': 'blue', 
+                        'fontSize': 13, 
+                        'text-align': 'center'
+                    }),
+                    dcc.Dropdown(
+                        id='outlier-dropdown',
+                        options=[{'label': d, 'value': d}
+                                for d in [0.5,1,1.5,2,2.5]],
+                        value= 1.5
+                    )],style={
+                    'display': 'inline-block',
+                    'width': 100,
+                    'float': 'left'
+                    }),
                 html.H5('Subjects Day Averages', 
                 style={
                     'color': 'blue', 
                     'fontSize': 25, 
                     'text-align': 'center'
                 }),
+
+                html.Br(),
+                html.Br(),
                 dcc.Graph(id='box-plot')
             ],
             style={
@@ -186,7 +239,7 @@ app.layout = html.Div(className='big-container', children=[
         }),
 
         html.Div(className='bg-light p-1', children=[
-            html.H2(html.Span('Subject Day Values', className='fw-light'), className='m-3 text-center'),
+            html.H2(html.Span('Deleted Users and corresponding Date:', className='fw-light'), className='m-3 text-center'),
             
             html.Div(id='output')
         ]),
@@ -234,9 +287,10 @@ def update_styles(date):
     Output('box-plot', "figure"),
     Input('datatable-interactivity', 'selected_columns'),
     Input('datatable-interactivity', "derived_virtual_data"),
-    Input('datatable-interactivity', "derived_virtual_selected_rows")
+    Input('datatable-interactivity', "derived_virtual_selected_rows"),
+    Input('outlier-dropdown', 'value')
 )
-def update_styles(feature, rows, selectedpts):
+def update_styles(feature, rows, selectedpts, outlier_value):
     if selectedpts is None:
         selectedpts = []
     test_dff = df if rows is None else pd.DataFrame(rows)
@@ -251,8 +305,8 @@ def update_styles(feature, rows, selectedpts):
     if selectedpts == []:
         q1 = df[feature[0]].describe()['25%']
         q3 = df[feature[0]].describe()['75%']
-        l1 = q1 -(q3-q1)*1.5
-        l2 = q3 + (q3-q1)*1.5
+        l1 = q1 -(q3-q1)*outlier_value
+        l2 = q3 + (q3-q1)*outlier_value
         outlier = []
         for i in range(len(df)):
             if (df[feature[0]][i] < l1 or df[feature[0]][i] > l2): outlier.append(i)
@@ -305,6 +359,7 @@ def update_graphs(active_cell, date):
 
     test_df[active_cell['column_id']] = pd.to_numeric(test_df[active_cell['column_id']])
     H_avg = {'0-3':0, '3-6':0, '6-9':0, '9-12':0, '12-15':0, '15-18':0, '18-21':0, '21-24':0}
+    # print(H_avg.keys())
     hs = list(test_df['H'])
     avgs = list(test_df[active_cell['column_id']])
     for h in range(len(hs)):
@@ -364,7 +419,8 @@ def show_removed_rows(previous, current):
     if previous!= None:
         for row in previous:
             if row not in current:
-                a = "User: " + row['Subject'] + "   Date: "+ row['Date']
+                if len(deleted_entries) == 0: a = "User: " + row['Subject'] + " & Date: "+ row['Date']
+                else: a = ",  User: " + row['Subject'] + " & Date: "+ row['Date']
                 deleted_entries.append(a)
     if previous is None:
         dash.exceptions.PreventUpdate()
