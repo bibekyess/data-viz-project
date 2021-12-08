@@ -11,7 +11,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-
+chosenDate = "2019-05-08"
+new_selectedpts = []
 deleted_entries = []
 test_df = pd.DataFrame()
 user_test = 0
@@ -28,6 +29,7 @@ dates = ['2019-05-08', '2019-05-09', '2019-05-10', '2019-05-11']
 
 df = pd.read_feather('data/box_plt_2019-05-08.feather')
 df['id'] = df['Subject']
+df.drop('index', axis = 1, inplace = True)
 df.set_index('id', inplace=True, drop=False)
 
 server = Flask(__name__)
@@ -54,13 +56,31 @@ app.layout = html.Div(className='big-container', children=[
                     'fontSize': 20, 
                     'text-align': 'left'
                 }),
-            html.H5('3. Click on the ❌ mark to delete the user-entry. The deleted entries appears on the end of page.', 
+            html.H5('3. Click on the ❌ mark to delete the user-entry. The deleted entries appear on the end of page.', 
                 style={
                     'color': 'green', 
                     'fontSize': 20, 
                     'text-align': 'left'
                 }),
-            html.H5('3. From the box-plot, find the lower or higher threeshold value and use filter row of table to filter the entries. You can use "<40", ">200" or "P0701" without inverted commas to filter the entries.', 
+            html.H5('4. Selecting each row-entry highlights the entry-point on the box-plot.', 
+                style={
+                    'color': 'green', 
+                    'fontSize': 20, 
+                    'text-align': 'left'
+                }),
+            html.H5('5. Select the "Show only Outliers" check-box to view only outliers and select the outlier setting from the dropdown list.', 
+                style={
+                    'color': 'green', 
+                    'fontSize': 20, 
+                    'text-align': 'left'
+                }),
+            html.H5('6. From the box-plot, find the lower or higher threeshold value and use filter row of table to filter the entries. You can use "<40", ">200" or "P0701" without inverted commas to filter the entries.', 
+                style={
+                    'color': 'green', 
+                    'fontSize': 20, 
+                    'text-align': 'left'
+                }),
+            html.H5('7. In the subject day trend, use the drop-down button to choose and compare with the trend of other data-Types.', 
                 style={
                     'color': 'green', 
                     'fontSize': 20, 
@@ -113,16 +133,11 @@ app.layout = html.Div(className='big-container', children=[
                     'fontWeight': 'bold',
                     'borderBottom': '1px solid black'
                 },
-                style_data_conditional=[
-                    {
-                        'if': {'row_index': 'odd'},
-                        'backgroundColor': 'red',
-                    }
-                ],
                 style_as_list_view=True,
                 data=df.to_dict('records'),
                 editable=False,
                 fixed_rows={'headers': True,},
+                # fixed_columns={'headers': True, 'data': 1},
                 filter_action="native",
                 sort_action="native",
                 sort_mode="multi",
@@ -137,7 +152,15 @@ app.layout = html.Div(className='big-container', children=[
                 
             ),
             ]),
-    
+            html.Br(),
+            dcc.Checklist(
+                id = 'checklist',
+                options=[
+                    {'label': 'Show only Outliers', 'value': 'True'},
+                ],
+                value= [],
+                labelStyle={'display': 'inline-block'}
+            ),
     html.Div(className='inner-container', children=[     
         html.Div(children=[
             html.Div(children=[
@@ -215,7 +238,7 @@ app.layout = html.Div(className='big-container', children=[
     ]),
     
     html.Div(className='footer', children=[
-        html.P(children=['CS492, KAIST. 2021', html.Br(), 'DP-5'])
+        html.P(children=['CS492, KAIST. 2021', html.Br(), 'DP-6'])
     ])
 ])
 
@@ -229,28 +252,23 @@ def update_styles(selected_columns):
         'background_color': '#D2F3FF'
     } for i in selected_columns]
 
-@app.callback(
-    Output('datatable-interactivity', 'data'),
-    Input('date-dropdown', 'value'))
-def update_styles(date):
-    global df
-    df = pd.read_feather('data/box_plt_' + str(date)+ '.feather')
-    df['id'] = df['Subject']
-    df.set_index('id', inplace=True, drop=False)
-    return df.to_dict('records')
+
 
 @app.callback(
     Output('box-plot', "figure"),
     Input('datatable-interactivity', 'selected_columns'),
     Input('datatable-interactivity', "derived_virtual_data"),
     Input('datatable-interactivity', "derived_virtual_selected_rows"),
-    Input('outlier-dropdown', 'value')
+    Input('outlier-dropdown', 'value'),
+    Input('datatable-interactivity', 'selected_columns')
+
 )
-def update_styles(feature, rows, selectedpts, outlier_value):
+def update_styles(feature, rows, selectedpts, outlier_value, column):
     if selectedpts is None:
         selectedpts = []
     test_dff = df if rows is None else pd.DataFrame(rows)
     
+    global new_selectedpts
     new_selectedpts = []
     for i in selectedpts:
         new_selectedpts.append(list(df['Subject']).index(test_dff.iloc[i]['Subject']))
@@ -268,6 +286,7 @@ def update_styles(feature, rows, selectedpts, outlier_value):
             if (df[feature[0]][i] < l1 or df[feature[0]][i] > l2): outlier.append(i)
         new_selectedpts = outlier
         color = 'red'
+    # print(new_selectedpts)
     fig = go.Figure()
     fig.add_trace(go.Box(
         y= dff[feature[0]],
@@ -290,10 +309,35 @@ def update_styles(feature, rows, selectedpts, outlier_value):
         showgrid=False,
         ticks="inside"
         )
- 
-
     return fig
 
+# @app.callback(
+#     Output('datatable-interactivity', 'data'),
+#     Input('date-dropdown', 'value'))
+# def update_styles(date):
+#     global df
+#     df = pd.read_feather('data/box_plt_' + str(date)+ '.feather')
+#     df['id'] = df['Subject']
+#     df.set_index('id', inplace=True, drop=False)
+#     return df.to_dict('records')
+
+@app.callback(
+    Output('datatable-interactivity', 'data'),
+    Input('date-dropdown', 'value'),
+    Input('checklist', 'value'),
+    Input('outlier-dropdown', 'value'),
+    Input('datatable-interactivity', 'selected_columns'))
+
+def update_styles(date, checkOutlier, outlier, columns):
+    global chosenDate
+    chosenDate = date
+    global df
+    df = pd.read_feather('data/box_plt_' + str(date)+ '.feather')
+    df['id'] = df['Subject']
+    df.set_index('id', inplace=True, drop=False)
+    # print(checkOutlier, new_selectedpts)
+    if len(checkOutlier) != 0: return df.iloc[new_selectedpts].to_dict('records')
+    else: return df.to_dict('records')
 
 @app.callback(
     Output('line-plt-top', 'figure'),
@@ -366,14 +410,14 @@ def update_line_plt_down(feature):
 @app.callback(Output('output', 'children'),
               [Input('datatable-interactivity', 'data_previous')],
               [State('datatable-interactivity', 'data')],
-              [Input('date-dropdown', 'value')])
-def show_removed_rows(previous, current, date):
+)
+def show_removed_rows(previous, current):
     global deleted_entries
     if previous!= None:
         for row in previous:
             if row not in current:
-                if len(deleted_entries) == 0: a = "User: " + row['Subject'] + " & Date: "+ date
-                else: a = ",  User: " + row['Subject'] + " & Date: "+ date
+                if len(deleted_entries) == 0: a = "User: " + row['Subject'] + " & Date: "+ chosenDate
+                else: a = ",  User: " + row['Subject'] + " & Date: "+ chosenDate
                 deleted_entries.append(a)
     if previous is None:
         dash.exceptions.PreventUpdate()
