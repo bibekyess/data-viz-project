@@ -199,7 +199,7 @@ app.layout = html.Div(className='big-container', children=[
             }),
             
             html.Div(children=[
-                html.H5('Subject Day Trend', 
+                html.H5(id = 'line-topic', children = 'Subject Day Trend', 
                 style={
                     'color': 'blue', 
                     'fontSize': 25, 
@@ -375,6 +375,8 @@ def update_graphs(active_cell, date):
         plot_bgcolor='rgba(0,0,0,0)')
     fig.update_xaxes(ticks="inside", linecolor="blue")
     fig.update_yaxes(ticks="inside", linecolor="blue")
+    fig.update_traces(line_color='#ed13cc', marker_color = '#ed13cc')
+
     return fig
     
     
@@ -406,6 +408,13 @@ def update_line_plt_down(feature):
     fig.update_xaxes(ticks="inside", linecolor="blue")
     fig.update_yaxes(ticks="inside", linecolor="blue")  
     return fig
+
+@app.callback(
+    Output('line-topic', 'children'),
+    Input('datatable-interactivity', 'active_cell'))
+def update_graphs(active_cell): 
+    if(active_cell == None): return "Subject Day Trend"
+    return "Subject Day Trend of " + active_cell['row_id']
 
 @app.callback(Output('output', 'children'),
               [Input('datatable-interactivity', 'data_previous')],
