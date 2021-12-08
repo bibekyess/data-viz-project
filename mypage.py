@@ -290,8 +290,8 @@ def update_styles(feature, rows, selectedpts, outlier_value, column):
     fig = go.Figure()
     fig.add_trace(go.Box(
         y= dff[feature[0]],
-        
         name= feature[0],
+        text=dff['id'],
         jitter=0.3,
         pointpos=-1.8,
         selectedpoints = new_selectedpts,
